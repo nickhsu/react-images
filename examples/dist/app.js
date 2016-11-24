@@ -434,211 +434,9 @@ module.exports = exports['default'];
 },{"aphrodite/no-important":8,"react":undefined,"react-images":undefined}],3:[function(require,module,exports){
 'use strict';
 
-Object.defineProperty(exports, '__esModule', {
-    value: true
-});
-
 var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i['return']) _i['return'](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError('Invalid attempt to destructure non-iterable instance'); } }; })();
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
-
-var _inlineStylePrefixerStatic = require('inline-style-prefixer/static');
-
-var _inlineStylePrefixerStatic2 = _interopRequireDefault(_inlineStylePrefixerStatic);
-
-var _util = require('./util');
-
-/**
- * Generate CSS for a selector and some styles.
- *
- * This function handles the media queries, pseudo selectors, and descendant
- * styles that can be used in aphrodite styles.
- *
- * @param {string} selector: A base CSS selector for the styles to be generated
- *     with.
- * @param {Object} styleTypes: A list of properties of the return type of
- *     StyleSheet.create, e.g. [styles.red, styles.blue].
- * @param stringHandlers: See `generateCSSRuleset`
- * @param useImportant: See `generateCSSRuleset`
- *
- * To actually generate the CSS special-construct-less styles are passed to
- * `generateCSSRuleset`.
- *
- * For instance, a call to
- *
- *     generateCSSInner(".foo", {
- *       color: "red",
- *       "@media screen": {
- *         height: 20,
- *         ":hover": {
- *           backgroundColor: "black"
- *         }
- *       },
- *       ":active": {
- *         fontWeight: "bold",
- *         ">>bar": {
- *           _names: { "foo_bar": true },
- *           height: 10,
- *         }
- *       }
- *     });
- *
- * will make 5 calls to `generateCSSRuleset`:
- *
- *     generateCSSRuleset(".foo", { color: "red" }, ...)
- *     generateCSSRuleset(".foo:active", { fontWeight: "bold" }, ...)
- *     generateCSSRuleset(".foo:active .foo_bar", { height: 10 }, ...)
- *     // These 2 will be wrapped in @media screen {}
- *     generateCSSRuleset(".foo", { height: 20 }, ...)
- *     generateCSSRuleset(".foo:hover", { backgroundColor: "black" }, ...)
- */
-var generateCSS = function generateCSS(selector, styleTypes, stringHandlers, useImportant) {
-    var merged = styleTypes.reduce(_util.recursiveMerge);
-
-    var declarations = {};
-    var mediaQueries = {};
-    var pseudoStyles = {};
-
-    Object.keys(merged).forEach(function (key) {
-        if (key[0] === ':') {
-            pseudoStyles[key] = merged[key];
-        } else if (key[0] === '@') {
-            mediaQueries[key] = merged[key];
-        } else {
-            declarations[key] = merged[key];
-        }
-    });
-
-    return generateCSSRuleset(selector, declarations, stringHandlers, useImportant) + Object.keys(pseudoStyles).map(function (pseudoSelector) {
-        return generateCSSRuleset(selector + pseudoSelector, pseudoStyles[pseudoSelector], stringHandlers, useImportant);
-    }).join("") + Object.keys(mediaQueries).map(function (mediaQuery) {
-        var ruleset = generateCSS(selector, [mediaQueries[mediaQuery]], stringHandlers, useImportant);
-        return mediaQuery + '{' + ruleset + '}';
-    }).join("");
-};
-
-exports.generateCSS = generateCSS;
-/**
- * Helper method of generateCSSRuleset to facilitate custom handling of certain
- * CSS properties. Used for e.g. font families.
- *
- * See generateCSSRuleset for usage and documentation of paramater types.
- */
-var runStringHandlers = function runStringHandlers(declarations, stringHandlers) {
-    var result = {};
-
-    Object.keys(declarations).forEach(function (key) {
-        // If a handler exists for this particular key, let it interpret
-        // that value first before continuing
-        if (stringHandlers && stringHandlers.hasOwnProperty(key)) {
-            result[key] = stringHandlers[key](declarations[key]);
-        } else {
-            result[key] = declarations[key];
-        }
-    });
-
-    return result;
-};
-
-/**
- * Generate a CSS ruleset with the selector and containing the declarations.
- *
- * This function assumes that the given declarations don't contain any special
- * children (such as media queries, pseudo-selectors, or descendant styles).
- *
- * Note that this method does not deal with nesting used for e.g.
- * psuedo-selectors or media queries. That responsibility is left to  the
- * `generateCSS` function.
- *
- * @param {string} selector: the selector associated with the ruleset
- * @param {Object} declarations: a map from camelCased CSS property name to CSS
- *     property value.
- * @param {Object.<string, function>} stringHandlers: a map from camelCased CSS
- *     property name to a function which will map the given value to the value
- *     that is output.
- * @param {bool} useImportant: A boolean saying whether to append "!important"
- *     to each of the CSS declarations.
- * @returns {string} A string of raw CSS.
- *
- * Examples:
- *
- *    generateCSSRuleset(".blah", { color: "red" })
- *    -> ".blah{color: red !important;}"
- *    generateCSSRuleset(".blah", { color: "red" }, {}, false)
- *    -> ".blah{color: red}"
- *    generateCSSRuleset(".blah", { color: "red" }, {color: c => c.toUpperCase})
- *    -> ".blah{color: RED}"
- *    generateCSSRuleset(".blah:hover", { color: "red" })
- *    -> ".blah:hover{color: red}"
- */
-var generateCSSRuleset = function generateCSSRuleset(selector, declarations, stringHandlers, useImportant) {
-    var handledDeclarations = runStringHandlers(declarations, stringHandlers);
-
-    var prefixedDeclarations = (0, _inlineStylePrefixerStatic2['default'])(handledDeclarations);
-
-    var prefixedRules = (0, _util.flatten)((0, _util.objectToPairs)(prefixedDeclarations).map(function (_ref) {
-        var _ref2 = _slicedToArray(_ref, 2);
-
-        var key = _ref2[0];
-        var value = _ref2[1];
-
-        if (Array.isArray(value)) {
-            var _ret = (function () {
-                // inline-style-prefix-all returns an array when there should be
-                // multiple rules, we will flatten to single rules
-
-                var prefixedValues = [];
-                var unprefixedValues = [];
-
-                value.forEach(function (v) {
-                    if (v.indexOf('-') === 0) {
-                        prefixedValues.push(v);
-                    } else {
-                        unprefixedValues.push(v);
-                    }
-                });
-
-                prefixedValues.sort();
-                unprefixedValues.sort();
-
-                return {
-                    v: prefixedValues.concat(unprefixedValues).map(function (v) {
-                        return [key, v];
-                    })
-                };
-            })();
-
-            if (typeof _ret === 'object') return _ret.v;
-        }
-        return [[key, value]];
-    }));
-
-    var rules = prefixedRules.map(function (_ref3) {
-        var _ref32 = _slicedToArray(_ref3, 2);
-
-        var key = _ref32[0];
-        var value = _ref32[1];
-
-        var stringValue = (0, _util.stringifyValue)(key, value);
-        var ret = (0, _util.kebabifyStyleName)(key) + ':' + stringValue + ';';
-        return useImportant === false ? ret : (0, _util.importantify)(ret);
-    }).join("");
-
-    if (rules) {
-        return selector + '{' + rules + '}';
-    } else {
-        return "";
-    }
-};
-exports.generateCSSRuleset = generateCSSRuleset;
-},{"./util":7,"inline-style-prefixer/static":25}],4:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, '__esModule', {
-    value: true
-});
-
-var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i['return']) _i['return'](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError('Invalid attempt to destructure non-iterable instance'); } }; })();
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _util = require('./util');
 
@@ -718,23 +516,347 @@ var StyleSheetTestUtils = {
     }
 };
 
-var css = function css() {
-    for (var _len = arguments.length, styleDefinitions = Array(_len), _key = 0; _key < _len; _key++) {
-        styleDefinitions[_key] = arguments[_key];
+/**
+ * Generate the Aphrodite API exports, with given `selectorHandlers` and
+ * `useImportant` state.
+ */
+var makeExports = function makeExports(useImportant, selectorHandlers) {
+    return {
+        StyleSheet: _extends({}, StyleSheet, {
+
+            /**
+             * Returns a version of the exports of Aphrodite (i.e. an object
+             * with `css` and `StyleSheet` properties) which have some
+             * extensions included.
+             *
+             * @param {Array.<Object>} extensions: An array of extensions to
+             *     add to this instance of Aphrodite. Each object should have a
+             *     single property on it, defining which kind of extension to
+             *     add.
+             * @param {SelectorHandler} [extensions[].selectorHandler]: A
+             *     selector handler extension. See `defaultSelectorHandlers` in
+             *     generate.js.
+             *
+             * @returns {Object} An object containing the exports of the new
+             *     instance of Aphrodite.
+             */
+            extend: function extend(extensions) {
+                var extensionSelectorHandlers = extensions
+                // Pull out extensions with a selectorHandler property
+                .map(function (extension) {
+                    return extension.selectorHandler;
+                })
+                // Remove nulls (i.e. extensions without a selectorHandler
+                // property).
+                .filter(function (handler) {
+                    return handler;
+                });
+
+                return makeExports(useImportant, selectorHandlers.concat(extensionSelectorHandlers));
+            }
+        }),
+
+        StyleSheetServer: StyleSheetServer,
+        StyleSheetTestUtils: StyleSheetTestUtils,
+
+        css: function css() {
+            for (var _len = arguments.length, styleDefinitions = Array(_len), _key = 0; _key < _len; _key++) {
+                styleDefinitions[_key] = arguments[_key];
+            }
+
+            return (0, _inject.injectAndGetClassName)(useImportant, styleDefinitions, selectorHandlers);
+        }
+    };
+};
+
+module.exports = makeExports;
+},{"./inject":5,"./util":7}],4:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i['return']) _i['return'](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError('Invalid attempt to destructure non-iterable instance'); } }; })();
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _inlineStylePrefixerStatic = require('inline-style-prefixer/static');
+
+var _inlineStylePrefixerStatic2 = _interopRequireDefault(_inlineStylePrefixerStatic);
+
+var _util = require('./util');
+
+/**
+ * `selectorHandlers` are functions which handle special selectors which act
+ * differently than normal style definitions. These functions look at the
+ * current selector and can generate CSS for the styles in their subtree by
+ * calling the callback with a new selector.
+ *
+ * For example, when generating styles with a base selector of '.foo' and the
+ * following styles object:
+ *
+ *   {
+ *     ':nth-child(2n)': {
+ *       ':hover': {
+ *         color: 'red'
+ *       }
+ *     }
+ *   }
+ *
+ * when we reach the ':hover' style, we would call our selector handlers like
+ *
+ *   handler(':hover', '.foo:nth-child(2n)', callback)
+ *
+ * Since our `pseudoSelectors` handles ':hover' styles, that handler would call
+ * the callback like
+ *
+ *   callback('.foo:nth-child(2n):hover')
+ *
+ * to generate its subtree `{ color: 'red' }` styles with a
+ * '.foo:nth-child(2n):hover' selector. The callback would return CSS like
+ *
+ *   '.foo:nth-child(2n):hover{color:red !important;}'
+ *
+ * and the handler would then return that resulting CSS.
+ *
+ * `defaultSelectorHandlers` is the list of default handlers used in a call to
+ * `generateCSS`.
+ *
+ * @name SelectorHandler
+ * @function
+ * @param {string} selector: The currently inspected selector. ':hover' in the
+ *     example above.
+ * @param {string} baseSelector: The selector of the parent styles.
+ *     '.foo:nth-child(2n)' in the example above.
+ * @param {function} generateSubtreeStyles: A function which can be called to
+ *     generate CSS for the subtree of styles corresponding to the selector.
+ *     Accepts a new baseSelector to use for generating those styles.
+ * @returns {?string} The generated CSS for this selector, or null if we don't
+ *     handle this selector.
+ */
+var defaultSelectorHandlers = [
+// Handle pseudo-selectors, like :hover and :nth-child(3n)
+function pseudoSelectors(selector, baseSelector, generateSubtreeStyles) {
+    if (selector[0] !== ":") {
+        return null;
     }
+    return generateSubtreeStyles(baseSelector + selector);
+},
 
-    var useImportant = true; // Append !important to all style definitions
-    return (0, _inject.injectAndGetClassName)(useImportant, styleDefinitions);
+// Handle media queries (or font-faces)
+function mediaQueries(selector, baseSelector, generateSubtreeStyles) {
+    if (selector[0] !== "@") {
+        return null;
+    }
+    // Generate the styles normally, and then wrap them in the media query.
+    var generated = generateSubtreeStyles(baseSelector);
+    return selector + '{' + generated + '}';
+}];
+
+exports.defaultSelectorHandlers = defaultSelectorHandlers;
+/**
+ * Generate CSS for a selector and some styles.
+ *
+ * This function handles the media queries, pseudo selectors, and descendant
+ * styles that can be used in aphrodite styles.
+ *
+ * @param {string} selector: A base CSS selector for the styles to be generated
+ *     with.
+ * @param {Object} styleTypes: A list of properties of the return type of
+ *     StyleSheet.create, e.g. [styles.red, styles.blue].
+ * @param {Array.<SelectorHandler>} selectorHandlers: A list of selector
+ *     handlers to use for handling special selectors. See
+ *     `defaultSelectorHandlers`.
+ * @param stringHandlers: See `generateCSSRuleset`
+ * @param useImportant: See `generateCSSRuleset`
+ *
+ * To actually generate the CSS special-construct-less styles are passed to
+ * `generateCSSRuleset`.
+ *
+ * For instance, a call to
+ *
+ *     generateCSS(".foo", {
+ *       color: "red",
+ *       "@media screen": {
+ *         height: 20,
+ *         ":hover": {
+ *           backgroundColor: "black"
+ *         }
+ *       },
+ *       ":active": {
+ *         fontWeight: "bold",
+ *         ">>bar": {
+ *           _names: { "foo_bar": true },
+ *           height: 10,
+ *         }
+ *       }
+ *     });
+ *
+ * with the default `selectorHandlers` will make 5 calls to
+ * `generateCSSRuleset`:
+ *
+ *     generateCSSRuleset(".foo", { color: "red" }, ...)
+ *     generateCSSRuleset(".foo:active", { fontWeight: "bold" }, ...)
+ *     generateCSSRuleset(".foo:active .foo_bar", { height: 10 }, ...)
+ *     // These 2 will be wrapped in @media screen {}
+ *     generateCSSRuleset(".foo", { height: 20 }, ...)
+ *     generateCSSRuleset(".foo:hover", { backgroundColor: "black" }, ...)
+ */
+var generateCSS = function generateCSS(selector, styleTypes) {
+    var selectorHandlers = arguments.length <= 2 || arguments[2] === undefined ? [] : arguments[2];
+    var stringHandlers = arguments.length <= 3 || arguments[3] === undefined ? {} : arguments[3];
+    var useImportant = arguments.length <= 4 || arguments[4] === undefined ? true : arguments[4];
+
+    var merged = styleTypes.reduce(_util.recursiveMerge);
+
+    var plainDeclarations = {};
+    var generatedStyles = "";
+
+    Object.keys(merged).forEach(function (key) {
+        // For each key, see if one of the selector handlers will handle these
+        // styles.
+        var foundHandler = selectorHandlers.some(function (handler) {
+            var result = handler(key, selector, function (newSelector) {
+                return generateCSS(newSelector, [merged[key]], selectorHandlers, stringHandlers, useImportant);
+            });
+            if (result != null) {
+                // If the handler returned something, add it to the generated
+                // CSS and stop looking for another handler.
+                generatedStyles += result;
+                return true;
+            }
+        });
+        // If none of the handlers handled it, add it to the list of plain
+        // style declarations.
+        if (!foundHandler) {
+            plainDeclarations[key] = merged[key];
+        }
+    });
+
+    return generateCSSRuleset(selector, plainDeclarations, stringHandlers, useImportant, selectorHandlers) + generatedStyles;
 };
 
-exports['default'] = {
-    StyleSheet: StyleSheet,
-    StyleSheetServer: StyleSheetServer,
-    StyleSheetTestUtils: StyleSheetTestUtils,
-    css: css
+exports.generateCSS = generateCSS;
+/**
+ * Helper method of generateCSSRuleset to facilitate custom handling of certain
+ * CSS properties. Used for e.g. font families.
+ *
+ * See generateCSSRuleset for usage and documentation of paramater types.
+ */
+var runStringHandlers = function runStringHandlers(declarations, stringHandlers, selectorHandlers) {
+    var result = {};
+
+    Object.keys(declarations).forEach(function (key) {
+        // If a handler exists for this particular key, let it interpret
+        // that value first before continuing
+        if (stringHandlers && stringHandlers.hasOwnProperty(key)) {
+            // TODO(emily): Pass in a callback which generates CSS, similar to
+            // how our selector handlers work, instead of passing in
+            // `selectorHandlers` and have them make calls to `generateCSS`
+            // themselves. Right now, this is impractical because our string
+            // handlers are very specialized and do complex things.
+            result[key] = stringHandlers[key](declarations[key], selectorHandlers);
+        } else {
+            result[key] = declarations[key];
+        }
+    });
+
+    return result;
 };
-module.exports = exports['default'];
-},{"./inject":5,"./util":7}],5:[function(require,module,exports){
+
+/**
+ * Generate a CSS ruleset with the selector and containing the declarations.
+ *
+ * This function assumes that the given declarations don't contain any special
+ * children (such as media queries, pseudo-selectors, or descendant styles).
+ *
+ * Note that this method does not deal with nesting used for e.g.
+ * psuedo-selectors or media queries. That responsibility is left to  the
+ * `generateCSS` function.
+ *
+ * @param {string} selector: the selector associated with the ruleset
+ * @param {Object} declarations: a map from camelCased CSS property name to CSS
+ *     property value.
+ * @param {Object.<string, function>} stringHandlers: a map from camelCased CSS
+ *     property name to a function which will map the given value to the value
+ *     that is output.
+ * @param {bool} useImportant: A boolean saying whether to append "!important"
+ *     to each of the CSS declarations.
+ * @returns {string} A string of raw CSS.
+ *
+ * Examples:
+ *
+ *    generateCSSRuleset(".blah", { color: "red" })
+ *    -> ".blah{color: red !important;}"
+ *    generateCSSRuleset(".blah", { color: "red" }, {}, false)
+ *    -> ".blah{color: red}"
+ *    generateCSSRuleset(".blah", { color: "red" }, {color: c => c.toUpperCase})
+ *    -> ".blah{color: RED}"
+ *    generateCSSRuleset(".blah:hover", { color: "red" })
+ *    -> ".blah:hover{color: red}"
+ */
+var generateCSSRuleset = function generateCSSRuleset(selector, declarations, stringHandlers, useImportant, selectorHandlers) {
+    var handledDeclarations = runStringHandlers(declarations, stringHandlers, selectorHandlers);
+
+    var prefixedDeclarations = (0, _inlineStylePrefixerStatic2['default'])(handledDeclarations);
+
+    var prefixedRules = (0, _util.flatten)((0, _util.objectToPairs)(prefixedDeclarations).map(function (_ref) {
+        var _ref2 = _slicedToArray(_ref, 2);
+
+        var key = _ref2[0];
+        var value = _ref2[1];
+
+        if (Array.isArray(value)) {
+            var _ret = (function () {
+                // inline-style-prefix-all returns an array when there should be
+                // multiple rules, we will flatten to single rules
+
+                var prefixedValues = [];
+                var unprefixedValues = [];
+
+                value.forEach(function (v) {
+                    if (v.indexOf('-') === 0) {
+                        prefixedValues.push(v);
+                    } else {
+                        unprefixedValues.push(v);
+                    }
+                });
+
+                prefixedValues.sort();
+                unprefixedValues.sort();
+
+                return {
+                    v: prefixedValues.concat(unprefixedValues).map(function (v) {
+                        return [key, v];
+                    })
+                };
+            })();
+
+            if (typeof _ret === 'object') return _ret.v;
+        }
+        return [[key, value]];
+    }));
+
+    var rules = prefixedRules.map(function (_ref3) {
+        var _ref32 = _slicedToArray(_ref3, 2);
+
+        var key = _ref32[0];
+        var value = _ref32[1];
+
+        var stringValue = (0, _util.stringifyValue)(key, value);
+        var ret = (0, _util.kebabifyStyleName)(key) + ':' + stringValue + ';';
+        return useImportant === false ? ret : (0, _util.importantify)(ret);
+    }).join("");
+
+    if (rules) {
+        return selector + '{' + rules + '}';
+    } else {
+        return "";
+    }
+};
+exports.generateCSSRuleset = generateCSSRuleset;
+},{"./util":7,"inline-style-prefixer/static":25}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -798,7 +920,7 @@ var stringHandlers = {
         if (Array.isArray(val)) {
             return val.map(fontFamily).join(",");
         } else if (typeof val === "object") {
-            injectStyleOnce(val.fontFamily, "@font-face", [val], false);
+            injectStyleOnce(val.src, "@font-face", [val], false);
             return '"' + val.fontFamily + '"';
         } else {
             return val;
@@ -825,28 +947,32 @@ var stringHandlers = {
     // TODO(emily): `stringHandlers` doesn't let us rename the key, so I have
     // to use `animationName` here. Improve that so we can call this
     // `animation` instead of `animationName`.
-    animationName: function animationName(val) {
-        if (typeof val !== "object") {
+    animationName: function animationName(val, selectorHandlers) {
+        if (Array.isArray(val)) {
+            return val.map(function (v) {
+                return animationName(v, selectorHandlers);
+            }).join(",");
+        } else if (typeof val === "object") {
+            // Generate a unique name based on the hash of the object. We can't
+            // just use the hash because the name can't start with a number.
+            // TODO(emily): this probably makes debugging hard, allow a custom
+            // name?
+            var _name = 'keyframe_' + (0, _util.hashObject)(val);
+
+            // Since keyframes need 3 layers of nesting, we use `generateCSS` to
+            // build the inner layers and wrap it in `@keyframes` ourselves.
+            var finalVal = '@keyframes ' + _name + '{';
+            Object.keys(val).forEach(function (key) {
+                finalVal += (0, _generate.generateCSS)(key, [val[key]], selectorHandlers, stringHandlers, false);
+            });
+            finalVal += '}';
+
+            injectGeneratedCSSOnce(_name, finalVal);
+
+            return _name;
+        } else {
             return val;
         }
-
-        // Generate a unique name based on the hash of the object. We can't
-        // just use the hash because the name can't start with a number.
-        // TODO(emily): this probably makes debugging hard, allow a custom
-        // name?
-        var name = 'keyframe_' + (0, _util.hashObject)(val);
-
-        // Since keyframes need 3 layers of nesting, we use `generateCSS` to
-        // build the inner layers and wrap it in `@keyframes` ourselves.
-        var finalVal = '@keyframes ' + name + '{';
-        Object.keys(val).forEach(function (key) {
-            finalVal += (0, _generate.generateCSS)(key, [val[key]], stringHandlers, false);
-        });
-        finalVal += '}';
-
-        injectGeneratedCSSOnce(name, finalVal);
-
-        return name;
     }
 };
 
@@ -882,9 +1008,9 @@ var injectGeneratedCSSOnce = function injectGeneratedCSSOnce(key, generatedCSS) 
     }
 };
 
-var injectStyleOnce = function injectStyleOnce(key, selector, definitions, useImportant) {
+var injectStyleOnce = function injectStyleOnce(key, selector, definitions, useImportant, selectorHandlers) {
     if (!alreadyInjected[key]) {
-        var generated = (0, _generate.generateCSS)(selector, definitions, stringHandlers, useImportant);
+        var generated = (0, _generate.generateCSS)(selector, definitions, selectorHandlers, stringHandlers, useImportant);
 
         injectGeneratedCSSOnce(key, generated);
     }
@@ -941,10 +1067,13 @@ exports.addRenderedClassNames = addRenderedClassNames;
  *
  * @param {boolean} useImportant If true, will append !important to generated
  *     CSS output. e.g. {color: red} -> "color: red !important".
- * @param {Object[]} styleDefinitions style definition objects as returned as
- *     properties of the return value of StyleSheet.create().
+ * @param {(Object|Object[])[]} styleDefinitions style definition objects, or
+ *     arbitrarily nested arrays of them, as returned as properties of the
+ *     return value of StyleSheet.create().
  */
-var injectAndGetClassName = function injectAndGetClassName(useImportant, styleDefinitions) {
+var injectAndGetClassName = function injectAndGetClassName(useImportant, styleDefinitions, selectorHandlers) {
+    styleDefinitions = (0, _util.flattenDeep)(styleDefinitions);
+
     // Filter out falsy values from the input, to allow for
     // `css(a, test && c)`
     var validDefinitions = styleDefinitions.filter(function (def) {
@@ -961,40 +1090,33 @@ var injectAndGetClassName = function injectAndGetClassName(useImportant, styleDe
     }).join("-o_O-");
     injectStyleOnce(className, '.' + className, validDefinitions.map(function (d) {
         return d._definition;
-    }), useImportant);
+    }), useImportant, selectorHandlers);
 
     return className;
 };
 exports.injectAndGetClassName = injectAndGetClassName;
-},{"./generate":3,"./util":7,"asap":9}],6:[function(require,module,exports){
+},{"./generate":4,"./util":7,"asap":9}],6:[function(require,module,exports){
 // Module with the same interface as the core aphrodite module,
 // except that styles injected do not automatically have !important
 // appended to them.
-//
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
     value: true
 });
 
-var _inject = require('./inject');
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-var _indexJs = require('./index.js');
+var _generate = require('./generate');
 
-var css = function css() {
-    for (var _len = arguments.length, styleDefinitions = Array(_len), _key = 0; _key < _len; _key++) {
-        styleDefinitions[_key] = arguments[_key];
-    }
+var _exports2 = require('./exports');
 
-    var useImportant = false; // Don't append !important to style definitions
-    return (0, _inject.injectAndGetClassName)(useImportant, styleDefinitions);
-};
+var _exports3 = _interopRequireDefault(_exports2);
 
-exports.StyleSheet = _indexJs.StyleSheet;
-exports.StyleSheetServer = _indexJs.StyleSheetServer;
-exports.StyleSheetTestUtils = _indexJs.StyleSheetTestUtils;
-exports.css = css;
-},{"./index.js":4,"./inject":5}],7:[function(require,module,exports){
+var useImportant = false; // Don't add !important to style definitions
+exports['default'] = (0, _exports3['default'])(useImportant, _generate.defaultSelectorHandlers);
+module.exports = exports['default'];
+},{"./exports":3,"./generate":4}],7:[function(require,module,exports){
 // {K1: V1, K2: V2, ...} -> [[K1, V1], [K2, V2]]
 'use strict';
 
@@ -1041,6 +1163,13 @@ var flatten = function flatten(list) {
 };
 
 exports.flatten = flatten;
+var flattenDeep = function flattenDeep(list) {
+    return list.reduce(function (memo, x) {
+        return memo.concat(Array.isArray(x) ? flattenDeep(x) : x);
+    }, []);
+};
+
+exports.flattenDeep = flattenDeep;
 var UPPERCASE_RE = /([A-Z])/g;
 var MS_RE = /^ms-/;
 
@@ -1188,6 +1317,7 @@ function murmurhash2_32_gc(str) {
         ++i;
     }
 
+    /* eslint-disable no-fallthrough */ // forgive existing code
     switch (l) {
         case 3:
             h ^= (str.charCodeAt(i + 2) & 0xff) << 16;
@@ -1197,6 +1327,7 @@ function murmurhash2_32_gc(str) {
             h ^= str.charCodeAt(i) & 0xff;
             h = (h & 0xffff) * 0x5bd1e995 + (((h >>> 16) * 0x5bd1e995 & 0xffff) << 16);
     }
+    /* eslint-enable no-fallthrough */
 
     h ^= h >>> 13;
     h = (h & 0xffff) * 0x5bd1e995 + (((h >>> 16) * 0x5bd1e995 & 0xffff) << 16);
@@ -1223,7 +1354,7 @@ var IMPORTANT_RE = /^([^:]+:.*?)( !important)?;$/;
 // Given a single style rule string like "a: b;", adds !important to generate
 // "a: b !important;".
 var importantify = function importantify(string) {
-    return string.replace(IMPORTANT_RE, function (_, base, important) {
+    return string.replace(IMPORTANT_RE, function (_, base) {
         return base + " !important;";
     });
 };
@@ -1379,9 +1510,12 @@ function flush() {
 
 // Safari 6 and 6.1 for desktop, iPad, and iPhone are the only browsers that
 // have WebKitMutationObserver but not un-prefixed MutationObserver.
-// Must use `global` instead of `window` to work in both frames and web
+// Must use `global` or `self` instead of `window` to work in both frames and web
 // workers. `global` is a provision of Browserify, Mr, Mrs, or Mop.
-var BrowserMutationObserver = global.MutationObserver || global.WebKitMutationObserver;
+
+/* globals self */
+var scope = typeof global !== "undefined" ? global : self;
+var BrowserMutationObserver = scope.MutationObserver || scope.WebKitMutationObserver;
 
 // MutationObservers are desirable because they have high priority and work
 // reliably everywhere they are implemented.
@@ -1528,12 +1662,15 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 
 var uppercasePattern = /[A-Z]/g;
 var msPattern = /^ms-/;
+var cache = {};
 
 function hyphenateStyleName(string) {
-    return string
-        .replace(uppercasePattern, '-$&')
-        .toLowerCase()
-        .replace(msPattern, '-ms-');
+    return string in cache
+    ? cache[string]
+    : cache[string] = string
+      .replace(uppercasePattern, '-$&')
+      .toLowerCase()
+      .replace(msPattern, '-ms-');
 }
 
 module.exports = hyphenateStyleName;
@@ -1667,7 +1804,7 @@ var alternativeProps = {
 };
 
 function flexboxOld(property, value) {
-  if (property === 'flexDirection') {
+  if (property === 'flexDirection' && typeof value === 'string') {
     return {
       WebkitBoxOrient: value.indexOf('column') > -1 ? 'vertical' : 'horizontal',
       WebkitBoxDirection: value.indexOf('reverse') > -1 ? 'reverse' : 'normal'
@@ -1938,7 +2075,7 @@ module.exports = exports['default'];
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = { "Webkit": { "transform": true, "transformOrigin": true, "transformOriginX": true, "transformOriginY": true, "backfaceVisibility": true, "perspective": true, "perspectiveOrigin": true, "transformStyle": true, "transformOriginZ": true, "animation": true, "animationDelay": true, "animationDirection": true, "animationFillMode": true, "animationDuration": true, "animationIterationCount": true, "animationName": true, "animationPlayState": true, "animationTimingFunction": true, "appearance": true, "userSelect": true, "fontKerning": true, "textEmphasisPosition": true, "textEmphasis": true, "textEmphasisStyle": true, "textEmphasisColor": true, "boxDecorationBreak": true, "clipPath": true, "maskImage": true, "maskMode": true, "maskRepeat": true, "maskPosition": true, "maskClip": true, "maskOrigin": true, "maskSize": true, "maskComposite": true, "mask": true, "maskBorderSource": true, "maskBorderMode": true, "maskBorderSlice": true, "maskBorderWidth": true, "maskBorderOutset": true, "maskBorderRepeat": true, "maskBorder": true, "maskType": true, "textDecorationStyle": true, "textDecorationSkip": true, "textDecorationLine": true, "textDecorationColor": true, "filter": true, "fontFeatureSettings": true, "breakAfter": true, "breakBefore": true, "breakInside": true, "columnCount": true, "columnFill": true, "columnGap": true, "columnRule": true, "columnRuleColor": true, "columnRuleStyle": true, "columnRuleWidth": true, "columns": true, "columnSpan": true, "columnWidth": true, "flex": true, "flexBasis": true, "flexDirection": true, "flexGrow": true, "flexFlow": true, "flexShrink": true, "flexWrap": true, "alignContent": true, "alignItems": true, "alignSelf": true, "justifyContent": true, "order": true, "transition": true, "transitionDelay": true, "transitionDuration": true, "transitionProperty": true, "transitionTimingFunction": true, "backdropFilter": true, "scrollSnapType": true, "scrollSnapPointsX": true, "scrollSnapPointsY": true, "scrollSnapDestination": true, "scrollSnapCoordinate": true, "shapeImageThreshold": true, "shapeImageMargin": true, "shapeImageOutside": true, "hyphens": true, "flowInto": true, "flowFrom": true, "regionFragment": true, "textSizeAdjust": true, "borderImage": true, "borderImageOutset": true, "borderImageRepeat": true, "borderImageSlice": true, "borderImageSource": true, "borderImageWidth": true, "tabSize": true, "objectFit": true, "objectPosition": true }, "Moz": { "appearance": true, "userSelect": true, "boxSizing": true, "textAlignLast": true, "textDecorationStyle": true, "textDecorationSkip": true, "textDecorationLine": true, "textDecorationColor": true, "tabSize": true, "hyphens": true, "fontFeatureSettings": true, "breakAfter": true, "breakBefore": true, "breakInside": true, "columnCount": true, "columnFill": true, "columnGap": true, "columnRule": true, "columnRuleColor": true, "columnRuleStyle": true, "columnRuleWidth": true, "columns": true, "columnSpan": true, "columnWidth": true }, "ms": { "flex": true, "flexBasis": false, "flexDirection": true, "flexGrow": false, "flexFlow": true, "flexShrink": false, "flexWrap": true, "alignContent": false, "alignItems": false, "alignSelf": false, "justifyContent": false, "order": false, "transform": true, "transformOrigin": true, "transformOriginX": true, "transformOriginY": true, "userSelect": true, "wrapFlow": true, "wrapThrough": true, "wrapMargin": true, "scrollSnapType": true, "scrollSnapPointsX": true, "scrollSnapPointsY": true, "scrollSnapDestination": true, "scrollSnapCoordinate": true, "touchAction": true, "hyphens": true, "flowInto": true, "flowFrom": true, "breakBefore": true, "breakAfter": true, "breakInside": true, "regionFragment": true, "gridTemplateColumns": true, "gridTemplateRows": true, "gridTemplateAreas": true, "gridTemplate": true, "gridAutoColumns": true, "gridAutoRows": true, "gridAutoFlow": true, "grid": true, "gridRowStart": true, "gridColumnStart": true, "gridRowEnd": true, "gridRow": true, "gridColumn": true, "gridColumnEnd": true, "gridColumnGap": true, "gridRowGap": true, "gridArea": true, "gridGap": true, "textSizeAdjust": true } };
+exports.default = { "Webkit": { "transform": true, "transformOrigin": true, "transformOriginX": true, "transformOriginY": true, "backfaceVisibility": true, "perspective": true, "perspectiveOrigin": true, "transformStyle": true, "transformOriginZ": true, "animation": true, "animationDelay": true, "animationDirection": true, "animationFillMode": true, "animationDuration": true, "animationIterationCount": true, "animationName": true, "animationPlayState": true, "animationTimingFunction": true, "appearance": true, "userSelect": true, "fontKerning": true, "textEmphasisPosition": true, "textEmphasis": true, "textEmphasisStyle": true, "textEmphasisColor": true, "boxDecorationBreak": true, "clipPath": true, "maskImage": true, "maskMode": true, "maskRepeat": true, "maskPosition": true, "maskClip": true, "maskOrigin": true, "maskSize": true, "maskComposite": true, "mask": true, "maskBorderSource": true, "maskBorderMode": true, "maskBorderSlice": true, "maskBorderWidth": true, "maskBorderOutset": true, "maskBorderRepeat": true, "maskBorder": true, "maskType": true, "textDecorationStyle": true, "textDecorationSkip": true, "textDecorationLine": true, "textDecorationColor": true, "filter": true, "fontFeatureSettings": true, "breakAfter": true, "breakBefore": true, "breakInside": true, "columnCount": true, "columnFill": true, "columnGap": true, "columnRule": true, "columnRuleColor": true, "columnRuleStyle": true, "columnRuleWidth": true, "columns": true, "columnSpan": true, "columnWidth": true, "flex": true, "flexBasis": true, "flexDirection": true, "flexGrow": true, "flexFlow": true, "flexShrink": true, "flexWrap": true, "alignContent": true, "alignItems": true, "alignSelf": true, "justifyContent": true, "order": true, "transition": true, "transitionDelay": true, "transitionDuration": true, "transitionProperty": true, "transitionTimingFunction": true, "backdropFilter": true, "scrollSnapType": true, "scrollSnapPointsX": true, "scrollSnapPointsY": true, "scrollSnapDestination": true, "scrollSnapCoordinate": true, "shapeImageThreshold": true, "shapeImageMargin": true, "shapeImageOutside": true, "hyphens": true, "flowInto": true, "flowFrom": true, "regionFragment": true, "textSizeAdjust": true }, "Moz": { "appearance": true, "userSelect": true, "boxSizing": true, "textAlignLast": true, "textDecorationStyle": true, "textDecorationSkip": true, "textDecorationLine": true, "textDecorationColor": true, "tabSize": true, "hyphens": true, "fontFeatureSettings": true, "breakAfter": true, "breakBefore": true, "breakInside": true, "columnCount": true, "columnFill": true, "columnGap": true, "columnRule": true, "columnRuleColor": true, "columnRuleStyle": true, "columnRuleWidth": true, "columns": true, "columnSpan": true, "columnWidth": true }, "ms": { "flex": true, "flexBasis": false, "flexDirection": true, "flexGrow": false, "flexFlow": true, "flexShrink": false, "flexWrap": true, "alignContent": false, "alignItems": false, "alignSelf": false, "justifyContent": false, "order": false, "transform": true, "transformOrigin": true, "transformOriginX": true, "transformOriginY": true, "userSelect": true, "wrapFlow": true, "wrapThrough": true, "wrapMargin": true, "scrollSnapType": true, "scrollSnapPointsX": true, "scrollSnapPointsY": true, "scrollSnapDestination": true, "scrollSnapCoordinate": true, "touchAction": true, "hyphens": true, "flowInto": true, "flowFrom": true, "breakBefore": true, "breakAfter": true, "breakInside": true, "regionFragment": true, "gridTemplateColumns": true, "gridTemplateRows": true, "gridTemplateAreas": true, "gridTemplate": true, "gridAutoColumns": true, "gridAutoRows": true, "gridAutoFlow": true, "grid": true, "gridRowStart": true, "gridColumnStart": true, "gridRowEnd": true, "gridRow": true, "gridColumn": true, "gridColumnEnd": true, "gridColumnGap": true, "gridRowGap": true, "gridArea": true, "gridGap": true, "textSizeAdjust": true } };
 module.exports = exports["default"];
 },{}],22:[function(require,module,exports){
 "use strict";
